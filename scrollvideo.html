@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Professional Responsive Scroll Canvas</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: #000;
+      overflow-x: hidden;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+
+    /* Circular Loader Styles */
+    #loader {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.5s ease;
+    }
+
+    .loader-circle {
+      position: relative;
+      width: 120px;
+      height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .loader-circle svg {
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+    }
+
+    .loader-circle circle {
+      fill: none;
+      stroke-width: 8;
+    }
+
+    .loader-bg {
+      stroke: #222;
+    }
+
+    .loader-progress {
+      stroke: #ffffff;
+      stroke-linecap: round;
+      stroke-dasharray: 314;
+      stroke-dashoffset: 314;
+      transition: stroke-dashoffset 0.05s linear;
+    }
+
+    .loader-text {
+      position: absolute;
+      color: #fff;
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+
+    /* Main Content Wrapper */
+    #main-content {
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.8s ease;
+    }
+
+    #main-content.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    #video-section {
+      width: 100%;
+    }
+
+    .video-sticky-wrapper {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #000;
+    }
+
+    /* Canvas styling */
+    #scroll-canvas {
+      width: 100vw;
+      height: 100vh;
+      display: block;
+    }
+
+    /* Text Overlay Styles */
+    .text-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      padding: 0 20px;
+      text-align: center;
+    }
+
+    .caption {
+      position: absolute;
+      color: #ffffff;
+      font-size: clamp(2.5rem, 8vw, 4rem);
+      font-weight: 700;
+      text-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+      opacity: 0;
+      transform: scale(0.95) translateY(15px);
+      transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+      letter-spacing: 2px;
+      width: 100%;
+    }
+
+    .caption.active {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+
+    #next-section {
+      height: 100vh;
+      background-color: #0a0a0a;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(1.8rem, 5vw, 2.5rem);
+      text-align: center;
+      padding: 0 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Circular Loader Overlay -->
+  <div id="loader">
+    <div class="loader-circle">
+      <svg>
+        <circle class="loader-bg" cx="60" cy="60" r="50"></circle>
+        <circle class="loader-progress" id="progress-circle" cx="60" cy="60" r="50"></circle>
+      </svg>
+      <div class="loader-text" id="loader-percentage">0%</div>
+    </div>
+  </div>
+
+  <!-- Main Website Container -->
+  <div id="main-content">
+    <section id="video-section">
+      <div class="video-sticky-wrapper">
+        <canvas id="scroll-canvas"></canvas>
+
+        <div class="text-overlay">
+          <div id="text-1" class="caption">Hello</div>
+          <div id="text-2" class="caption">Welcome</div>
+          <div id="text-3" class="caption">Explore</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="next-section">
+      <h2>Next Content Section</h2>
+    </section>
+  </div>
+
+  <!-- Valid GSAP CDN Scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+
+  <script>
+    const canvas = document.getElementById("scroll-canvas");
+    const context = canvas.getContext("2d");
+    const loader = document.getElementById("loader");
+    const mainContent = document.getElementById("main-content");
+    const progressCircle = document.getElementById("progress-circle");
+    const loaderPercentage = document.getElementById("loader-percentage");
+    const circumference = 314;
+
+    // Sequence Configuration
+    const frameCount = 80;
+    const currentFrame = index => `video/ezgif-frame-${String(index).padStart(3, '0')}.jpg`;
+
+    const images = [];
+    const airframes = { frame: 1 };
+    let loadedImagesCount = 0;
+    let isRevealed = false;
+
+    // Preload Sequence Images with Fallback & Error Handling
+    function preloadImages() {
+      for (let i = 1; i <= frameCount; i++) {
+        const img = new Image();
+        const srcPath = currentFrame(i);
+        img.src = srcPath;
+
+        img.onload = () => {
+          loadedImagesCount++;
+          updateLoaderProgress(loadedImagesCount);
+        };
+
+        img.onerror = () => {
+          // GitHub Pages / Linux uppercase .JPG extension fallback
+          if (!img.dataset.retried) {
+            img.dataset.retried = "true";
+            img.src = srcPath.replace('.jpg', '.JPG');
+            return;
+          }
+          console.warn(`Could not load image at path: ${srcPath}`);
+          loadedImagesCount++;
+          updateLoaderProgress(loadedImagesCount);
+        };
+
+        images.push(img);
+      }
+    }
+
+    // Dynamic Loader Updates
+    function updateLoaderProgress(count) {
+      let percent = Math.min(100, Math.round((count / frameCount) * 100));
+      loaderPercentage.textContent = percent + "%";
+      progressCircle.style.strokeDashoffset = circumference - (percent / 100) * circumference;
+
+      if (percent >= 100) {
+        showWebsite();
+      }
+    }
+
+    function showWebsite() {
+      if (isRevealed) return;
+      isRevealed = true;
+
+      loader.style.opacity = "0";
+      setTimeout(() => {
+        loader.style.display = "none";
+        mainContent.classList.add("visible");
+        
+        // Initialize Scroll Canvas and force initial render
+        initCanvasAndScroll();
+        requestAnimationFrame(() => {
+          resizeCanvas();
+          if (images[0]) renderFrame(images[0]);
+        });
+      }, 500);
+    }
+
+    // High performance canvas renderer (simulates object-fit: cover)
+    function renderFrame(img) {
+      if (!img || !img.complete || img.naturalWidth === 0) return;
+      
+      const canvasWidth = canvas.width;
+      const canvasHeight = canvas.height;
+      const imgWidth = img.naturalWidth || img.width;
+      const imgHeight = img.naturalHeight || img.height;
+
+      const imgRatio = imgWidth / imgHeight;
+      const canvasRatio = canvasWidth / canvasHeight;
+
+      let renderWidth, renderHeight, xOffset, yOffset;
+
+      if (canvasRatio > imgRatio) {
+        renderWidth = canvasWidth;
+        renderHeight = canvasWidth / imgRatio;
+        xOffset = 0;
+        yOffset = (canvasHeight - renderHeight) / 2;
+      } else {
+        renderWidth = canvasHeight * imgRatio;
+        renderHeight = canvasHeight;
+        xOffset = (canvasWidth - renderWidth) / 2;
+        yOffset = 0;
+      }
+
+      context.clearRect(0, 0, canvasWidth, canvasHeight);
+      context.drawImage(img, xOffset, yOffset, renderWidth, renderHeight);
+    }
+
+    // Handle viewport changes dynamically
+    function resizeCanvas() {
+      canvas.width = window.innerWidth * window.devicePixelRatio;
+      canvas.height = window.innerHeight * window.devicePixelRatio;
+      
+      const currentImg = images[airframes.frame - 1];
+      if (currentImg) {
+        renderFrame(currentImg);
+      }
+    }
+
+    function initCanvasAndScroll() {
+      gsap.registerPlugin(ScrollTrigger);
+      
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+
+      const text1 = document.getElementById("text-1");
+      const text2 = document.getElementById("text-2");
+      const text3 = document.getElementById("text-3");
+
+      // Render first image immediately
+      if (images[0]) renderFrame(images[0]);
+
+      // GSAP Scroll Animation
+      gsap.to(airframes, {
+        frame: frameCount,
+        snap: "frame",
+        ease: "none",
+        scrollTrigger: {
+          trigger: "#video-section",
+          start: "top top",
+          end: "+=3000",
+          scrub: 0,
+          pin: true,
+          anticipatePin: 1
+        },
+        onUpdate: () => {
+          const currentImg = images[airframes.frame - 1];
+          if (currentImg) renderFrame(currentImg);
+
+          const frame = airframes.frame;
+
+          // Text overlays mapped to frame ranges
+          if (frame >= 10 && frame < 30) {
+            text1.classList.add("active");
+          } else {
+            text1.classList.remove("active");
+          }
+
+          if (frame >= 35 && frame < 55) {
+            text2.classList.add("active");
+          } else {
+            text2.classList.remove("active");
+          }
+
+          if (frame >= 60) {
+            text3.classList.add("active");
+          } else {
+            text3.classList.remove("active");
+          }
+        }
+      });
+
+      ScrollTrigger.refresh();
+    }
+
+    // Initialize Preloader
+    preloadImages();
+
+    // Safety Timeout fallback
+    setTimeout(() => {
+      showWebsite();
+    }, 5000);
+  </script>
+</body>
+</html>

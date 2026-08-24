@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Responsive Hero - 101 Smooth Frames</title>
+  <style>
+    /* Reset default spacing */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: #000;
+      overflow: hidden; /* Prevents scrolling or pulling down on mobile devices */
+    }
+
+    /* Full-screen hero section wrapper */
+    .hero-sequence-container {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background-color: #000;
+      position: relative;
+      touch-action: none; /* Blocks default phone browser gestures like refresh and swipe-back */
+    }
+
+    /* Images stack fills 100% of the viewport */
+    .image-stack-wrapper {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    /* Hide all frames cleanly by default using opacity and GPU acceleration */
+    .image-stack-wrapper img {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover; /* Keeps image proportions clean across screen shapes */
+      pointer-events: none;
+      user-select: none;
+      opacity: 0;
+      will-change: opacity;
+    }
+
+    /* Instantly reveals the active frame */
+    .image-stack-wrapper img.active {
+      opacity: 1;
+    }
+
+    /* Content Layer on top */
+    .hero-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #ffffff;
+      text-align: center;
+      pointer-events: none;
+      text-shadow: 0 4px 12px rgba(0,0,0,0.6);
+      font-family: sans-serif;
+      z-index: 10;
+      width: 90%;
+      padding: 0 20px;
+    }
+
+    /* Typography scale */
+    .hero-overlay h1 {
+      font-size: 2.2rem;
+      margin-bottom: 12px;
+    }
+
+    .hero-overlay p {
+      font-size: 1rem;
+      opacity: 0.8;
+    }
+
+    @media (min-width: 768px) {
+      .hero-overlay h1 { font-size: 3.5rem; }
+      .hero-overlay p { font-size: 1.2rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="hero-sequence-container" id="heroSequence">
+    <div class="image-stack-wrapper" id="imageStack"></div>
+    <div class="hero-overlay">
+      <h1 id="overlayTitle">Full Screen Playback</h1>
+      <p id="overlaySubtitle">Move cursor left/right to view</p>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const hero = document.getElementById("heroSequence");
+      const stack = document.getElementById("imageStack");
+      const title = document.getElementById("overlayTitle");
+      const subtitle = document.getElementById("overlaySubtitle");
+      
+      const totalFrames = 101; 
+      const imageElements = [];
+      let lastIndex = 0;
+
+      // Variables for smoothing physics
+      let targetProgress = 0; // Where your finger/mouse is pointing (0 to 1)
+      let currentProgress = 0; // The actual position of the animation frame right now
+      
+      // ADJUST SMOOTHING SPEED HERE: Lower values (like 0.05) make it slower and heavier.
+      // Higher values (like 0.2) make it faster and snappier.
+      const easeSpeed = 0.08; 
+
+      // Detect if user device is a mobile or tablet touch interface
+      const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      if (isTouchDevice) {
+        title.innerText = "Interactive Design";
+        subtitle.innerText = "Swipe your finger left & right to play";
+      }
+
+      // 1. Inject all 101 images into the DOM instantly
+      for (let i = 1; i <= totalFrames; i++) {
+        const img = document.createElement("img");
+        const frameNumber = String(i).padStart(3, '0');
+        
+        img.src = `image/ezgif-frame-${frameNumber}.jpg`; 
+        img.alt = `Frame ${frameNumber}`;
+        
+        if (i === 1) {
+          img.classList.add("active");
+        }
+        
+        stack.appendChild(img);
+        imageElements.push(img);
+      }
+
+      // Updates target position calculation based on X coordinates
+      function setTargetFromX(clientX) {
+        const windowWidth = window.innerWidth;
+        let relativeX = clientX / windowWidth;
+        targetProgress = Math.max(0, Math.min(1, relativeX));
+      }
+
+      // 2. Desktop Handler: Track mouse movement
+      window.addEventListener("mousemove", (e) => {
+        setTargetFromX(e.clientX);
+      });
+
+      // 3. Mobile Handler: Track touch movements
+      window.addEventListener("touchmove", (e) => {
+        if (e.touches.length > 0) {
+          setTargetFromX(e.touches[0].clientX);
+        }
+      }, { passive: true });
+
+      // Handle the initial touch/tap point instantly
+      window.addEventListener("touchstart", (e) => {
+        if (e.touches.length > 0) {
+          setTargetFromX(e.touches[0].clientX);
+        }
+      }, { passive: true });
+
+      // 4. The Animation Render Engine Loop (Runs smoothly at 60fps)
+      function renderLoop() {
+        // Linear Interpolation (Lerp) Formula: creates a soft gliding effect
+        currentProgress += (targetProgress - currentProgress) * easeSpeed;
+
+        // Map the current progress smoothly across 101 positions (indices 0 to 100)
+        const frameIndex = Math.floor(currentProgress * (totalFrames - 1));
+        
+        // Switch frames only when index actually changes to save processor power
+        if (frameIndex !== lastIndex) {
+          imageElements[lastIndex].classList.remove("active");
+          imageElements[frameIndex].classList.add("active");
+          lastIndex = frameIndex;
+        }
+
+        // Continually call the function for high-performance rendering loops
+        requestAnimationFrame(renderLoop);
+      }
+
+      // Start the physics rendering loop
+      requestAnimationFrame(renderLoop);
+    });
+  </script>
+
+</body>
+</html>

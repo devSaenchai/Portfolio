@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Responsive Sports Car Hero Section</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0d0d11;
+            /* Disables browser swipe actions and scrolling on mobile devices */
+            touch-action: none; 
+        }
+        .hero {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at center, #1b1b22 0%, #050507 100%);
+            overflow: hidden;
+        }
+        /* Grid background layout effect for spatial awareness */
+        .hero::before {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 40px 40px;
+            background-position: center;
+            transform: perspective(500px) rotateX(60deg);
+            top: -50%;
+            opacity: 0.7;
+            pointer-events: none;
+        }
+        .hero-text {
+            color: #ffffff;
+            font-size: 5rem;
+            text-transform: uppercase;
+            font-weight: 900;
+            letter-spacing: 8px;
+            text-align: center;
+            pointer-events: none;
+            z-index: 1;
+            text-shadow: 0px 10px 20px rgba(0, 0, 0, 0.7);
+            user-select: none;
+        }
+        .hud-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 10px 18px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            font-size: 0.85rem;
+            pointer-events: none;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .car-container {
+            position: absolute;
+            width: 95px; /* Compact car size for better driving area */
+            height: auto;
+            left: 0;
+            top: 0;
+            will-change: transform;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #car {
+            width: 100%;
+            height: auto;
+            filter: drop-shadow(0px 12px 10px rgba(0, 0, 0, 0.6));
+            position: relative;
+            z-index: 2;
+        }
+        /* Headlight beam projection rules */
+        .headlights {
+            position: absolute;
+            top: -95px; /* Aligned to front bumper for 95px car width */
+            left: 50%;
+            width: 130px;
+            height: 110px;
+            background: radial-gradient(ellipse at bottom, rgba(255, 245, 200, 0.4) 0%, rgba(255, 240, 180, 0.08) 55%, transparent 75%);
+            clip-path: polygon(20% 100%, 80% 100%, 100% 0%, 0% 0%);
+            z-index: 1;
+            opacity: 0;
+            transform: translateX(-50%);
+            transform-origin: bottom center;
+            transition: opacity 0.15s ease-out;
+            pointer-events: none;
+        }
+        .headlights.active {
+            opacity: 1;
+        }
+
+        @media (max-width: 768px) {
+            .hero-text { font-size: 2.5rem; letter-spacing: 4px; padding: 0 20px; }
+            .car-container { width: 65px; } /* Scales down on mobile to preserve screen area */
+            .headlights { top: -70px; width: 90px; height: 80px; }
+            .hud-panel { top: 15px; left: 15px; font-size: 0.75rem; padding: 8px 12px; }
+        }
+    </style>
+</head>
+<body>
+
+    <section class="hero" id="hero-container">
+        <div class="hud-panel">
+            <div>Click & Hold to Turn on Headlights</div>
+        </div>
+        
+        <h1 class="hero-text">Shift Reality</h1>
+        
+        <div class="car-container" id="car-box">
+            <div class="headlights" id="lights-beam"></div>
+            <!-- Replace 'car.png' with your top-facing image path -->
+            <img id="car" src="car.png" alt="Steering Sports Car">
+        </div>
+    </section>
+
+    <script>
+        const carBox = document.getElementById('car-box');
+        const headlights = document.getElementById('lights-beam');
+        
+        let carX = window.innerWidth / 2;
+        let carY = window.innerHeight / 2;
+        let carAngle = 0;
+
+        let targetX = carX;
+        let targetY = carY;
+
+        const speedEasing = 0.05;   
+        const turningRadius = 0.09; 
+
+        // Mouse Tracking
+        window.addEventListener('mousemove', (e) => {
+            targetX = e.clientX;
+            targetY = e.clientY;
+        });
+
+        // Left Click Headlights Trigger
+        window.addEventListener('mousedown', (e) => {
+            if (e.button === 0) headlights.classList.add('active');
+        });
+        window.addEventListener('mouseup', (e) => {
+            if (e.button === 0) headlights.classList.remove('active');
+        });
+
+        // Touch Tracking (Mobile)
+        window.addEventListener('touchstart', (e) => {
+            targetX = e.touches[0].clientX;
+            targetY = e.touches[0].clientY;
+            headlights.classList.add('active');
+        }, { passive: true });
+
+        window.addEventListener('touchmove', (e) => {
+            targetX = e.touches[0].clientX;
+            targetY = e.touches[0].clientY;
+        }, { passive: true });
+
+        window.addEventListener('touchend', () => {
+            headlights.classList.remove('active');
+        });
+
+        // Main Animation Engine Loop
+        function engineLoop() {
+            let deltaX = targetX - carX;
+            let deltaY = targetY - carY;
+            let distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+            if (distance > 8) {
+                let targetAngle = Math.atan2(deltaY, deltaX);
+
+                let directionalDiff = targetAngle - carAngle;
+                while (directionalDiff < -Math.PI) directionalDiff += Math.PI * 2;
+                while (directionalDiff > Math.PI) directionalDiff -= Math.PI * 2;
+                
+                carAngle += directionalDiff * turningRadius;
+
+                carX += Math.cos(carAngle) * distance * speedEasing;
+                carY += Math.sin(carAngle) * distance * speedEasing;
+            }
+
+            const renderingDegrees = carAngle * (180 / Math.PI);
+            const offsetX = carBox.offsetWidth / 2;
+            const offsetY = carBox.offsetHeight / 2;
+            
+            // Adjusts transformation offsets (+90 deg offset for natively top-facing assets)
+            carBox.style.transform = `translate3d(${carX - offsetX}px, ${carY - offsetY}px, 0) rotate(${renderingDegrees + 90}deg)`;
+
+            requestAnimationFrame(engineLoop);
+        }
+
+        engineLoop();
+
+        // Screen Recalibration on Resize
+        window.addEventListener('resize', () => {
+            carX = window.innerWidth / 2;
+            carY = window.innerHeight / 2;
+            targetX = carX;
+            targetY = carY;
+        });
+    </script>
+</body>
+</html>
