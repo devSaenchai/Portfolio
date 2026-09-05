@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smooth Scroll Video Animation</title>
+  <style>
+    body {
+      margin: 0;
+      background: #000;
+      overflow-x: hidden;
+    }
+
+    .scroll-container {
+      height: 500vh; /* Increased container height to slow down the scroll scrub rate */
+      position: relative;
+    }
+
+    canvas {
+      position: sticky;
+      top: 0;
+      width: 100vw;
+      height: 100vh;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="scroll-container">
+    <canvas id="video-canvas"></canvas>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('video-canvas');
+    const context = canvas.getContext('2d');
+    const frameCount = 299;
+    
+    const currentFrame = index => `frames/frame (${index}).jpg`;
+
+    const images = [];
+    let imagesLoaded = 0;
+    
+    // Animation tracking variables
+    let targetFrame = 0;
+    let currentFrameFloat = 0;
+    const smoothness = 0.1; // Lower = smoother/slower lag, Higher = more responsive
+
+    function setCanvasSize() {
+      canvas.width = window.innerWidth * window.devicePixelRatio;
+      canvas.height = window.innerHeight * window.devicePixelRatio;
+    }
+
+    window.addEventListener('resize', setCanvasSize);
+    setCanvasSize();
+
+    for (let i = 1; i <= frameCount; i++) {
+      const img = new Image();
+      img.src = currentFrame(i);
+      img.onload = () => {
+        imagesLoaded++;
+        if (imagesLoaded === frameCount) {
+          updateImage(0);
+        }
+      };
+      images.push(img);
+    }
+
+    function drawImageCover(ctx, img) {
+      const canvas = ctx.canvas;
+      const hRatio = canvas.width / img.width;
+      const vRatio = canvas.height / img.height;
+      const ratio = Math.max(hRatio, vRatio);
+      
+      const centerShiftX = (canvas.width - img.width * ratio) / 2;
+      const centerShiftY = (canvas.height - img.height * ratio) / 2;
+      
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(
+        img, 
+        0, 0, img.width, img.height, 
+        centerShiftX, centerShiftY, img.width * ratio, img.height * ratio
+      );
+    }
+
+    function updateImage(index) {
+      const frameIdx = Math.round(index);
+      if (images[frameIdx]) {
+        drawImageCover(context, images[frameIdx]);
+      }
+    }
+
+    // Continuously interpolates frames for fluid momentum
+    function renderLoop() {
+      currentFrameFloat += (targetFrame - currentFrameFloat) * smoothness;
+      updateImage(currentFrameFloat);
+      requestAnimationFrame(renderLoop);
+    }
+
+    window.addEventListener('scroll', () => {
+      const scrollTop = window.scrollY;
+      const maxScrollTop = document.documentElement.scrollHeight - window.innerHeight;
+      const scrollFraction = scrollTop / maxScrollTop;
+      targetFrame = scrollFraction * (frameCount - 1);
+    });
+
+    // Start the animation render loop
+    requestAnimationFrame(renderLoop);
+  </script>
+
+</body>
+</html>
